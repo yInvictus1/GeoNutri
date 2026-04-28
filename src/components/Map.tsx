@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Polygon, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
+import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Neighborhood, Establishment, getScoreColor } from '../utils/data';
@@ -76,6 +77,7 @@ interface MapViewProps {
 
 export default function MapView({ neighborhoods, establishments }: MapViewProps) {
   const center: [number, number] = [-22.9068, -43.1729];
+  const navigate = useNavigate();
 
   return (
     <div className="relative h-[600px] w-full rounded-xl overflow-hidden shadow-md border border-slate-200">
@@ -159,11 +161,17 @@ export default function MapView({ neighborhoods, establishments }: MapViewProps)
             key={est.id} 
             position={[est.lat, est.lon]}
             icon={createIcon(typeColors[est.type] || typeColors.other)}
+            eventHandlers={{
+              click: () => {
+                navigate(`/estabelecimento/${est.id}`);
+              }
+            }}
           >
             <Popup>
               <div className="p-1">
                 <h4 className="font-bold text-sm">{est.name}</h4>
                 <p className="text-xs text-slate-600 capitalize">Tipo: {est.type}</p>
+                <div className="mt-2 text-xs text-blue-600 font-medium">Ver detalhes</div>
               </div>
             </Popup>
           </Marker>

@@ -1,10 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { generateSyntheticData, loadRealData, processScores, Neighborhood, Establishment, getScoreColor } from '../utils/data';
+import { generateSyntheticData, loadRealData, processScores, Neighborhood, Establishment, getScoreColor, TYPE_TRANSLATIONS } from '../utils/data';
 import MapView from './Map';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, ScatterChart, Scatter, ZAxis } from 'recharts';
-import { AlertTriangle, MapPin, Users, Store, Info, Search, Filter, Download } from 'lucide-react';
+import { AlertTriangle, MapPin, Users, Store, Info, Search, Filter, Download, Navigation2 } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
   const [data, setData] = useState<{ neighborhoods: Neighborhood[], establishments: Establishment[] } | null>(null);
   const [selectedNeighborhoods, setSelectedNeighborhoods] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -88,6 +92,16 @@ export default function Dashboard() {
       .sort((a, b) => (a.score || 0) - (b.score || 0))
       .slice(0, 10);
   }, [filteredData]);
+
+  const selectedEstablishment = useMemo(() => {
+    if (!id || !data) return null;
+    return data.establishments.find(e => e.id === id) || null;
+  }, [data, id]);
+
+  const establishmentNeighborhood = useMemo(() => {
+    if (!selectedEstablishment || !data) return null;
+    return data.neighborhoods.find(n => n.id === selectedEstablishment.neighborhoodId);
+  }, [selectedEstablishment, data]);
 
   const exportToCSV = () => {
     const csvContent = [
@@ -436,6 +450,90 @@ export default function Dashboard() {
           </p>
         </section>
       </main>
+
+      {/* Establishment Details Sidebar */}
+      {selectedEstablishment && (
+        <>
+          <div 
+            className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[9998] transition-opacity md:hidden"
+            onClick={() => navigate('/')}
+          />
+          <aside className="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-[0_0_40px_rgba(0,0,0,0.1)] z-[9999] border-l border-slate-200 flex flex-col transform transition-transform duration-300 ease-in-out">
+            <div className="flex items-center justify-between p-4 px-6 border-b border-slate-100 bg-slate-50/50">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <Store className="w-5 h-5 text-emerald-600" />
+                Detalhes do Estabelecimento
+              </h3>
+              <button 
+                onClick={() => navigate('/')}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-full transition-colors"
+                title="Fechar (Esc)"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="mb-6">
+                <div className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-full capitalize mb-3 border border-emerald-200">
+                  {selectedEstablishment.type}
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900">{selectedEstablishment.name}</h2>
+                <div className="flex items-center gap-1.5 text-slate-500 mt-2 text-sm">
+                  <Navigation2 className="w-4 h-4" />
+                  <span>Lat: {selectedEstablishment.lat.toFixed(6)}, Lon: {selectedEstablishment.lon.toFixed(6)}</span>
+                </div>
+              </div>
+
+              {establishmentNeighborhood && (
+                <div className="bg-slate-50 rounded-xl border border-slate-200 p-5 mb-6">
+                  <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" /> Bairro Associado
+                  </h4>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-xl font-bold text-slate-900">{establishmentNeighborhood.name}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-sm text-slate-500">Score de Acesso:</span>
+                        <span 
+                          className="font-bold rounded text-white px-2 py-0.5 text-xs inline-block"
+                          style={{ backgroundColor: getScoreColor(establishmentNeighborhood.score || 0) }}
+                        >
+                          {establishmentNeighborhood.score?.toFixed(2)} / 10
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 text-sm">
+                      <div>
+                        <span className="text-slate-500 block mb-1">População</span>
+                        <strong className="text-slate-800">{establishmentNeighborhood.population.toLocaleString('pt-BR')} hab.</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block mb-1">Renda Média</span>
+                        <strong className="text-slate-800">{establishmentNeighborhood.income.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="mt-8">
+                <a 
+                  href={`https://www.google.com/maps?q=${selectedEstablishment.lat},${selectedEstablishment.lon}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                >
+                  <MapPin className="w-4 h-4" />
+                  Ver no Google Maps
+                </a>
+              </div>
+            </div>
+          </aside>
+        </>
+      )}
     </div>
   );
 }
