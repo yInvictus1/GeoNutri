@@ -1,8 +1,45 @@
-import React, { useMemo } from 'react';
-import { MapContainer, TileLayer, Polygon, Marker, Popup, Tooltip } from 'react-leaflet';
+import React, { useMemo, useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Polygon, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Neighborhood, Establishment, getScoreColor } from '../utils/data';
+
+// Custom Location Button
+function LocationButton() {
+  const map = useMap();
+  const [userPos, setUserPos] = useState<[number, number] | null>(null);
+
+  useEffect(() => {
+    map.on('locationfound', (e) => {
+      setUserPos([e.latlng.lat, e.latlng.lng]);
+    });
+  }, [map]);
+
+  const handleLocate = () => {
+    map.locate({ setView: true, maxZoom: 13 });
+  };
+
+  return (
+    <>
+      <div className="absolute top-24 left-3 z-[1000] pointer-events-auto">
+        <button 
+          onClick={(e) => { e.preventDefault(); handleLocate(); }}
+          className="bg-white w-[34px] h-[34px] flex items-center justify-center rounded-sm border-2 border-[rgba(0,0,0,0.2)] bg-clip-padding shadow-[0_1px_5px_rgba(0,0,0,0.65)] hover:bg-[#f4f4f4] text-slate-700 transition-colors"
+          title="Minha Localização"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+          </svg>
+        </button>
+      </div>
+      {userPos && (
+        <Marker position={userPos}>
+          <Popup>Você está aqui</Popup>
+        </Marker>
+      )}
+    </>
+  );
+}
 
 // Fix for default marker icons in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -43,6 +80,7 @@ export default function MapView({ neighborhoods, establishments }: MapViewProps)
   return (
     <div className="relative h-[600px] w-full rounded-xl overflow-hidden shadow-md border border-slate-200">
       <MapContainer center={center} zoom={11} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+        <LocationButton />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"

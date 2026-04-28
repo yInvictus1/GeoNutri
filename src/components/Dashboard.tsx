@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { generateSyntheticData, loadRealData, processScores, Neighborhood, Establishment, getScoreColor } from '../utils/data';
 import MapView from './Map';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
-import { AlertTriangle, MapPin, Users, Store, Info, Search, Filter } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, ScatterChart, Scatter, ZAxis } from 'recharts';
+import { AlertTriangle, MapPin, Users, Store, Info, Search, Filter, Download } from 'lucide-react';
 
 export default function Dashboard() {
   const [data, setData] = useState<{ neighborhoods: Neighborhood[], establishments: Establishment[] } | null>(null);
@@ -88,6 +88,29 @@ export default function Dashboard() {
       .sort((a, b) => (a.score || 0) - (b.score || 0))
       .slice(0, 10);
   }, [filteredData]);
+
+  const exportToCSV = () => {
+    const csvContent = [
+      ['Bairro', 'Score', 'Estabelecimentos', 'Renda Media (R$)', 'Populacao', 'Situacao'],
+      ...filteredData.neighborhoods.map(n => [
+        `"${n.name}"`,
+        n.score?.toFixed(2),
+        n.establishmentsCount,
+        n.income.toFixed(2),
+        n.population,
+        (n.score || 0) < 4.0 ? 'Crítico' : 'Adequado'
+      ])
+    ].map(e => e.join(",")).join("\n");
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'desertos_alimentares_rj.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   if (loading) {
     return (
@@ -237,10 +260,16 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="flex-1 p-6 md:p-8 overflow-y-auto">
-        <header className="mb-8">
+        <header className="mb-8 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <Search className="w-6 h-6 text-slate-400" /> Visão Geral
           </h2>
+          <button 
+            onClick={exportToCSV}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
+          >
+            <Download className="w-4 h-4" /> Exportar Dados
+          </button>
         </header>
 
         {/* Metrics Cards */}
@@ -359,6 +388,52 @@ export default function Dashboard() {
               </table>
             </div>
           </div>
+        </section>
+
+        {/* Scatter Plot Section */}
+        <section className="mt-8 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+            Relação: Renda Média x Score de Acesso
+          </h3>
+          <div className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis 
+                  type="number" 
+                  dataKey="income" 
+                  name="Renda Média" 
+                  unit=" R$" 
+                  stroke="#64748b" 
+                  tickFormatter={(val) => `R$ ${(val/1000).toFixed(0)}k`} 
+                />
+                <YAxis 
+                  type="number" 
+                  dataKey="score" 
+                  name="Score" 
+                  domain={[0, 10]} 
+                  stroke="#64748b" 
+                />
+                <ZAxis type="number" dataKey="population" range={[50, 400]} name="População" />
+                <RechartsTooltip 
+                  cursor={{ strokeDasharray: '3 3' }}
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                  formatter={(value: any, name: any) => {
+                    if (name === 'Renda Média') return [`R$ ${Number(value).toFixed(2)}`, name];
+                    return [value, name];
+                  }}
+                />
+                <Scatter name="Bairros" data={filteredData.neighborhoods}>
+                  {filteredData.neighborhoods.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={getScoreColor(entry.score || 0)} opacity={0.8} />
+                  ))}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="text-sm text-slate-500 mt-4 text-center">
+            O tamanho dos círculos representa a população do bairro.
+          </p>
         </section>
       </main>
     </div>

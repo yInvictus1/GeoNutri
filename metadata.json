@@ -1,5 +1,7 @@
 {
-  "name": " Mapeamento de Desertos Alimentares",
-  "description": "",
-  "requestFramePermissions": []
+  "name": "Mapeamento de Desertos Alimentares",
+  "description": "Uma aplicação web interativa que mapeia o acesso a alimentos saudáveis no RJ.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
 }
