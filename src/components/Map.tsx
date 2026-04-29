@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Polygon, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -156,26 +157,31 @@ export default function MapView({ neighborhoods, establishments }: MapViewProps)
         })}
 
         {/* Establishment Markers */}
-        {establishments.map((est) => (
-          <Marker 
-            key={est.id} 
-            position={[est.lat, est.lon]}
-            icon={createIcon(typeColors[est.type] || typeColors.other)}
-            eventHandlers={{
-              click: () => {
-                navigate(`/estabelecimento/${est.id}`);
-              }
-            }}
-          >
-            <Popup>
-              <div className="p-1">
-                <h4 className="font-bold text-sm">{est.name}</h4>
-                <p className="text-xs text-slate-600 capitalize">Tipo: {est.type}</p>
-                <div className="mt-2 text-xs text-blue-600 font-medium">Ver detalhes</div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+        <MarkerClusterGroup
+          chunkedLoading
+          maxClusterRadius={40}
+        >
+          {establishments.map((est) => (
+            <Marker 
+              key={est.id} 
+              position={[est.lat, est.lon]}
+              icon={createIcon(typeColors[est.type] || typeColors.other)}
+              eventHandlers={{
+                click: () => {
+                  navigate(`/estabelecimento/${est.id}`);
+                }
+              }}
+            >
+              <Popup>
+                <div className="p-1">
+                  <h4 className="font-bold text-sm">{est.name}</h4>
+                  <p className="text-xs text-slate-600 capitalize">Tipo: {est.type}</p>
+                  <div className="mt-2 text-xs text-blue-600 font-medium">Ver detalhes</div>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MarkerClusterGroup>
       </MapContainer>
 
       {/* Map Legend */}

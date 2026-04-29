@@ -4,17 +4,26 @@ import MapView from './Map';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, ScatterChart, Scatter, ZAxis } from 'recharts';
 import { AlertTriangle, MapPin, Users, Store, Info, Search, Filter, Download, Navigation2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useDashboardFilters } from '../hooks/useDashboardFilters';
 
 export default function Dashboard() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const [data, setData] = useState<{ neighborhoods: Neighborhood[], establishments: Establishment[] } | null>(null);
-  const [selectedNeighborhoods, setSelectedNeighborhoods] = useState<string[]>([]);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [neighborhoodSearch, setNeighborhoodSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [useRealData, setUseRealData] = useState(true);
+
+  // Custom hook extracting filter state logic to URL (Deep Linking)
+  const { 
+    selectedNeighborhoods, 
+    toggleNeighborhood, 
+    clearNeighborhoods,
+    selectedTypes, 
+    toggleType, 
+    useRealData, 
+    setRealDataMode 
+  } = useDashboardFilters();
 
   useEffect(() => {
     setLoading(true);
@@ -45,12 +54,6 @@ export default function Dashboard() {
       name.toLowerCase().includes(neighborhoodSearch.toLowerCase())
     );
   }, [allNeighborhoodNames, neighborhoodSearch]);
-
-  const toggleNeighborhood = (name: string) => {
-    setSelectedNeighborhoods(prev => 
-      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
-    );
-  };
 
   const allTypes = useMemo(() => {
     if (!data) return [];
@@ -157,7 +160,7 @@ export default function Dashboard() {
                 type="checkbox" 
                 className="sr-only" 
                 checked={useRealData}
-                onChange={() => setUseRealData(!useRealData)}
+                onChange={() => setRealDataMode(!useRealData)}
               />
               <div className={`block w-10 h-6 rounded-full transition-colors ${useRealData ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
               <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${useRealData ? 'transform translate-x-4' : ''}`}></div>
@@ -188,7 +191,7 @@ export default function Dashboard() {
                 <label className="block text-sm font-medium text-slate-700">Bairros</label>
                 {selectedNeighborhoods.length > 0 && (
                   <button 
-                    onClick={() => setSelectedNeighborhoods([])}
+                    onClick={clearNeighborhoods}
                     className="text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
                   >
                     Limpar ({selectedNeighborhoods.length})
@@ -241,18 +244,7 @@ export default function Dashboard() {
                       type="checkbox" 
                       className="rounded text-emerald-600 focus:ring-emerald-500"
                       checked={selectedTypes.length === 0 || selectedTypes.includes(type)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedTypes(prev => prev.length === 0 ? [type] : [...prev, type]);
-                        } else {
-                          setSelectedTypes(prev => {
-                            if (prev.length === 0) {
-                              return allTypes.filter(t => t !== type);
-                            }
-                            return prev.filter(t => t !== type);
-                          });
-                        }
-                      }}
+                      onChange={() => toggleType(type, allTypes)}
                     />
                     <span className="capitalize">{type}</span>
                   </label>
@@ -344,10 +336,10 @@ export default function Dashboard() {
 
         {/* Charts and Tables */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col min-w-0">
             <h3 className="text-lg font-bold text-slate-800 mb-6">Top 10 Bairros com Menor Acesso</h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-80 w-full min-w-0 flex-1" style={{ minHeight: 320 }}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <BarChart
                   data={top10Critical}
                   layout="vertical"
@@ -409,8 +401,8 @@ export default function Dashboard() {
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
             Relação: Renda Média x Score de Acesso
           </h3>
-          <div className="h-[400px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[400px] w-full min-w-0" style={{ minHeight: 400 }}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis 
@@ -431,10 +423,21 @@ export default function Dashboard() {
                 <ZAxis type="number" dataKey="population" range={[50, 400]} name="População" />
                 <RechartsTooltip 
                   cursor={{ strokeDasharray: '3 3' }}
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                  formatter={(value: any, name: any) => {
-                    if (name === 'Renda Média') return [`R$ ${Number(value).toFixed(2)}`, name];
-                    return [value, name];
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-white p-3 rounded-lg shadow-md border border-slate-200 text-sm">
+                          <p className="font-bold text-slate-800 mb-2">{data.name}</p>
+                          <div className="flex flex-col gap-1">
+                            <p className="text-slate-600"><span className="font-medium text-slate-500">Renda Média:</span> R$ {data.income.toFixed(2)}</p>
+                            <p className="text-slate-600"><span className="font-medium text-slate-500">Score:</span> {data.score?.toFixed(2)}</p>
+                            <p className="text-slate-600"><span className="font-medium text-slate-500">População:</span> {data.population.toLocaleString('pt-BR')} hab.</p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
                   }}
                 />
                 <Scatter name="Bairros" data={filteredData.neighborhoods}>

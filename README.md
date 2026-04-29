@@ -8,7 +8,7 @@ Uma aplicação web interativa para mapear e analisar o acesso a alimentos saud�
 Este projeto visa identificar essas áreas no Rio de Janeiro cruzando dados socioeconômicos do IBGE com a localização de estabelecimentos alimentares (supermercados, feiras, hortifrútis) do OpenStreetMap.
 
 ## 📸 Screenshot
-<img width="1901" height="1016" alt="image" src="https://github.com/user-attachments/assets/4d59e728-e4ec-4c53-83ba-d3276c83f071" />
+*(Adicione um screenshot ou gif da aplicação aqui)*
 
 ## 🚀 Como Executar Localmente
 
