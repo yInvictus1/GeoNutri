@@ -4,7 +4,9 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.heat';
 import { Neighborhood, Establishment, getScoreColor } from '../utils/data';
+import { Store, MapPin, ExternalLink, Info, Users, CreditCard, ChevronRight } from 'lucide-react';
 
 // Custom Location Button
 function LocationButton() {
@@ -74,11 +76,38 @@ const typeColors: Record<string, string> = {
 interface MapViewProps {
   neighborhoods: Neighborhood[];
   establishments: Establishment[];
+  showHeatmap?: boolean;
 }
 
-export default function MapView({ neighborhoods, establishments }: MapViewProps) {
+// Heatmap Component
+function HeatmapLayer({ points }: { points: [number, number, number][] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!points.length) return;
+    
+    const heatLayer = (L as any).heatLayer(points, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 17,
+      gradient: { 0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1: 'red' }
+    }).addTo(map);
+
+    return () => {
+      map.removeLayer(heatLayer);
+    };
+  }, [map, points]);
+
+  return null;
+}
+
+export default function MapView({ neighborhoods, establishments, showHeatmap }: MapViewProps) {
   const center: [number, number] = [-22.9068, -43.1729];
   const navigate = useNavigate();
+
+  const heatPoints = useMemo<[number, number, number][]>(() => {
+    return establishments.map(e => [e.lat, e.lon, 1]);
+  }, [establishments]);
 
   return (
     <div className="relative h-[600px] w-full rounded-xl overflow-hidden shadow-md border border-slate-200">
@@ -88,6 +117,8 @@ export default function MapView({ neighborhoods, establishments }: MapViewProps)
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         />
+        
+        {showHeatmap && <HeatmapLayer points={heatPoints} />}
         
         {/* Neighborhood Polygons */}
         {neighborhoods.map((n) => {
@@ -106,49 +137,74 @@ export default function MapView({ neighborhoods, establishments }: MapViewProps)
             >
               <Tooltip sticky className="custom-tooltip">
                 <div className="p-1 min-w-[180px]">
-                  <h3 className="font-bold text-base border-b border-slate-200 pb-1 mb-2">{n.name}</h3>
-                  <div className="flex flex-col gap-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Score:</span>
-                      <strong style={{ color }}>{n.score?.toFixed(2)} / 10</strong>
+                  <h3 className="font-bold text-base border-b border-slate-200 pb-1 mb-2 flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-slate-500" />
+                    {n.name}
+                  </h3>
+                  <div className="flex flex-col gap-1.5 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">Score de Acesso:</span>
+                      <strong className="px-2 py-0.5 rounded text-white text-xs" style={{ backgroundColor: color }}>
+                        {n.score?.toFixed(2)}
+                      </strong>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-slate-500">Estabelecimentos:</span>
-                      <span className="font-medium">{n.establishmentsCount}</span>
+                      <span className="font-semibold text-slate-700">{n.establishmentsCount}</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-slate-500">Renda Média:</span>
-                      <span className="font-medium">{n.income.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">População:</span>
-                      <span className="font-medium">{n.population.toLocaleString('pt-BR')} hab.</span>
+                      <span className="font-semibold text-slate-700">{n.income.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
                   </div>
                 </div>
               </Tooltip>
               <Popup>
-                <div className="p-2">
-                  <h3 className="font-bold text-lg border-b pb-1 mb-2">{n.name}</h3>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <span className="text-slate-500">Score de Acesso:</span>
-                    <span className="font-bold" style={{ color }}>{n.score?.toFixed(2)} / 10</span>
-                    
-                    <span className="text-slate-500">Estabelecimentos:</span>
-                    <span className="font-medium">{n.establishmentsCount}</span>
-                    
-                    <span className="text-slate-500">Renda Média:</span>
-                    <span className="font-medium">{n.income.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                    
-                    <span className="text-slate-500">População:</span>
-                    <span className="font-medium">{n.population.toLocaleString('pt-BR')} hab.</span>
+                <div className="p-1 min-w-[240px]">
+                  <div className="flex items-center gap-2 mb-3 border-b border-slate-100 pb-2">
+                    <div className="p-1.5 bg-slate-100 rounded-lg">
+                      <MapPin className="w-4 h-4 text-slate-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-slate-900 leading-tight">{n.name}</h3>
+                      <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Rio de Janeiro, RJ</p>
+                    </div>
                   </div>
-                  <div className="mt-3 pt-2 border-t text-xs text-slate-500">
-                    <p className="mb-1 font-semibold">Programas Sociais Recomendados:</p>
-                    <ul className="list-disc pl-4">
-                      <li><a href="#" className="text-blue-600 hover:underline">Banco de Alimentos RJ</a></li>
-                      <li><a href="#" className="text-blue-600 hover:underline">SESC Mesa Brasil</a></li>
-                    </ul>
+
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                      <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">Score</div>
+                      <div className="text-xl font-black" style={{ color }}>{n.score?.toFixed(1)}</div>
+                    </div>
+                    <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                      <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">População</div>
+                      <div className="text-base font-bold text-slate-800">{n.population > 1000 ? `${(n.population/1000).toFixed(1)}k` : n.population}</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5 text-sm mb-4">
+                    <div className="flex items-center gap-2 text-slate-600">
+                      <Store className="w-4 h-4 opacity-50" />
+                      <span>{n.establishmentsCount} estabelecimentos locais</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-600">
+                      <CreditCard className="w-4 h-4 opacity-50" />
+                      <span>Renda: {n.income.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-3 border-t border-slate-100">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wide">Recursos Recomendados</p>
+                    <div className="flex flex-col gap-1.5">
+                      <a href="#" className="flex items-center justify-between text-xs text-blue-600 hover:text-blue-800 font-medium group transition-colors">
+                        Banco de Alimentos RJ
+                        <ChevronRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
+                      </a>
+                      <a href="#" className="flex items-center justify-between text-xs text-blue-600 hover:text-blue-800 font-medium group transition-colors">
+                        SESC Mesa Brasil
+                        <ChevronRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
+                      </a>
+                    </div>
                   </div>
                 </div>
               </Popup>
@@ -173,10 +229,39 @@ export default function MapView({ neighborhoods, establishments }: MapViewProps)
               }}
             >
               <Popup>
-                <div className="p-1">
-                  <h4 className="font-bold text-sm">{est.name}</h4>
-                  <p className="text-xs text-slate-600 capitalize">Tipo: {est.type}</p>
-                  <div className="mt-2 text-xs text-blue-600 font-medium">Ver detalhes</div>
+                <div className="p-1 min-w-[200px]">
+                  <div className="flex items-start gap-2 mb-3">
+                    <div 
+                      className="mt-0.5 w-3 h-3 rounded-full shrink-0 border border-white shadow-sm" 
+                      style={{ backgroundColor: typeColors[est.type] || typeColors.other }}
+                    />
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-900 leading-tight mb-1">{est.name}</h4>
+                      <div className="flex items-center gap-1 px-2 py-0.5 bg-slate-100 rounded text-[10px] font-bold text-slate-500 uppercase w-fit">
+                        {est.type}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
+                    <button 
+                      onClick={() => navigate(`/estabelecimento/${est.id}`)}
+                      className="w-full flex items-center justify-between px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors group"
+                    >
+                      Ver Detalhes do Local
+                      <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </button>
+                    
+                    <a 
+                      href={`https://www.google.com/maps?q=${est.lat},${est.lon}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-slate-500 hover:text-slate-800 text-[10px] font-medium transition-colors"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Google Maps
+                    </a>
+                  </div>
                 </div>
               </Popup>
             </Marker>

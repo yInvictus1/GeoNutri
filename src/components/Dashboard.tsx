@@ -2,9 +2,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { generateSyntheticData, loadRealData, processScores, Neighborhood, Establishment, getScoreColor, TYPE_TRANSLATIONS } from '../utils/data';
 import MapView from './Map';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, ScatterChart, Scatter, ZAxis } from 'recharts';
-import { AlertTriangle, MapPin, Users, Store, Info, Search, Filter, Download, Navigation2 } from 'lucide-react';
+import { AlertTriangle, MapPin, Users, Store, Info, Search, Filter, Download, Navigation2, BarChart3, Layers, X } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDashboardFilters } from '../hooks/useDashboardFilters';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Dashboard() {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +14,8 @@ export default function Dashboard() {
   const [data, setData] = useState<{ neighborhoods: Neighborhood[], establishments: Establishment[] } | null>(null);
   const [neighborhoodSearch, setNeighborhoodSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [comparedNeighborhoods, setComparedNeighborhoods] = useState<string[]>([]);
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   // Custom hook extracting filter state logic to URL (Deep Linking)
   const { 
@@ -24,6 +27,19 @@ export default function Dashboard() {
     useRealData, 
     setRealDataMode 
   } = useDashboardFilters();
+
+  const toggleComparison = (name: string) => {
+    setComparedNeighborhoods(prev => {
+      if (prev.includes(name)) return prev.filter(n => n !== name);
+      if (prev.length >= 2) return [prev[1], name];
+      return [...prev, name];
+    });
+  };
+
+  const comparisonData = useMemo(() => {
+    if (!data || comparedNeighborhoods.length === 0) return [];
+    return data.neighborhoods.filter(n => comparedNeighborhoods.includes(n.name));
+  }, [data, comparedNeighborhoods]);
 
   useEffect(() => {
     setLoading(true);
@@ -143,7 +159,11 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col md:flex-row">
       {/* Sidebar */}
-      <aside className="w-full md:w-80 bg-white border-r border-slate-200 p-6 flex flex-col shrink-0 overflow-y-auto">
+      <motion.aside 
+        initial={{ x: -20, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        className="w-full md:w-80 bg-white border-r border-slate-200 p-6 flex flex-col shrink-0 overflow-y-auto"
+      >
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-emerald-700 flex items-center gap-2 mb-2">
             <span className="text-3xl">🍎</span> Desertos Alimentares RJ
@@ -153,8 +173,8 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <div className="mb-6 bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
-          <label className="flex items-center cursor-pointer">
+        <div className="mb-4 bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+          <label className="flex items-center cursor-pointer mb-3">
             <div className="relative">
               <input 
                 type="checkbox" 
@@ -166,7 +186,23 @@ export default function Dashboard() {
               <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${useRealData ? 'transform translate-x-4' : ''}`}></div>
             </div>
             <div className="ml-3 text-sm font-medium text-slate-700">
-              Usar Dados Reais (IBGE + OSM)
+              Usar Dados Reais (IBGE)
+            </div>
+          </label>
+
+          <label className="flex items-center cursor-pointer">
+            <div className="relative">
+              <input 
+                type="checkbox" 
+                className="sr-only" 
+                checked={showHeatmap}
+                onChange={() => setShowHeatmap(!showHeatmap)}
+              />
+              <div className={`block w-10 h-6 rounded-full transition-colors ${showHeatmap ? 'bg-orange-500' : 'bg-slate-300'}`}></div>
+              <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${showHeatmap ? 'transform translate-x-4' : ''}`}></div>
+            </div>
+            <div className="ml-3 text-sm font-medium text-slate-700">
+              Exibir Heatmap de Densidade
             </div>
           </label>
         </div>
@@ -221,13 +257,25 @@ export default function Dashboard() {
                     return (
                       <div 
                         key={name} 
-                        onClick={() => toggleNeighborhood(name)}
-                        className={`flex items-center px-2.5 py-1.5 rounded cursor-pointer transition-colors mb-0.5 ${isSelected ? 'bg-emerald-50 text-emerald-800' : 'hover:bg-slate-50 text-slate-700'}`}
+                        className={`group flex items-center px-2.5 py-1.5 rounded cursor-pointer transition-colors mb-0.5 ${isSelected ? 'bg-emerald-50 text-emerald-800' : 'hover:bg-slate-50 text-slate-700'}`}
                       >
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center mr-2.5 transition-colors shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 bg-white'}`}>
-                          {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>}
+                        <div 
+                          className="flex items-center flex-1 min-w-0"
+                          onClick={() => toggleNeighborhood(name)}
+                        >
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center mr-2.5 transition-colors shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 bg-white'}`}>
+                            {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>}
+                          </div>
+                          <span className="text-sm select-none truncate">{name}</span>
                         </div>
-                        <span className="text-sm select-none truncate">{name}</span>
+                        
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); toggleComparison(name); }}
+                          title="Adicionar para Comparação"
+                          className={`ml-1 p-1 rounded transition-colors opacity-0 group-hover:opacity-100 ${comparedNeighborhoods.includes(name) ? 'bg-blue-100 text-blue-600 opacity-100' : 'text-slate-400 hover:bg-slate-200'}`}
+                        >
+                          <BarChart3 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     );
                   })
@@ -262,10 +310,15 @@ export default function Dashboard() {
           </ul>
           <p className="mt-4 italic">Projeto desenvolvido para fins de impacto social.</p>
         </div>
-      </aside>
+      </motion.aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+      <motion.main 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        className="flex-1 p-6 md:p-8 overflow-y-auto"
+      >
         <header className="mb-8 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <Search className="w-6 h-6 text-slate-400" /> Visão Geral
@@ -280,46 +333,29 @@ export default function Dashboard() {
 
         {/* Metrics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-start gap-4">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
-              <MapPin className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500">Bairros Analisados</p>
-              <p className="text-2xl font-bold text-slate-900">{metrics.total}</p>
-            </div>
-          </div>
-          
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-start gap-4">
-            <div className="p-3 bg-red-50 text-red-600 rounded-lg">
-              <AlertTriangle className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500">Situação Crítica</p>
-              <p className="text-2xl font-bold text-slate-900">{metrics.critical}</p>
-              <p className="text-xs text-slate-400 mt-1">Score &lt; 4.0</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-start gap-4">
-            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
-              <Store className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500">Estabelecimentos</p>
-              <p className="text-2xl font-bold text-slate-900">{metrics.estCount}</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-start gap-4">
-            <div className="p-3 bg-amber-50 text-amber-600 rounded-lg">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-500">População em Risco</p>
-              <p className="text-2xl font-bold text-slate-900">{metrics.popRisk.toLocaleString('pt-BR')}</p>
-            </div>
-          </div>
+          {[
+            { label: 'Bairros Analisados', value: metrics.total, icon: MapPin, color: 'blue' },
+            { label: 'Situação Crítica', value: metrics.critical, icon: AlertTriangle, color: 'red', sub: 'Score < 4.0' },
+            { label: 'Estabelecimentos', value: metrics.estCount, icon: Store, color: 'emerald' },
+            { label: 'População em Risco', value: metrics.popRisk.toLocaleString('pt-BR'), icon: Users, color: 'amber' }
+          ].map((card, i) => (
+            <motion.div 
+              key={card.label}
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.1 + (i * 0.05) }}
+              className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-start gap-4"
+            >
+              <div className={`p-3 bg-${card.color}-50 text-${card.color}-600 rounded-lg`}>
+                <card.icon className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-500">{card.label}</p>
+                <p className="text-2xl font-bold text-slate-900">{card.value}</p>
+                {card.sub && <p className="text-xs text-slate-400 mt-1">{card.sub}</p>}
+              </div>
+            </motion.div>
+          ))}
         </div>
 
         {/* Map Section */}
@@ -331,7 +367,11 @@ export default function Dashboard() {
               <span>Cores mais quentes (vermelho) indicam maior risco.</span>
             </div>
           </div>
-          <MapView neighborhoods={filteredData.neighborhoods} establishments={filteredData.establishments} />
+          <MapView 
+            neighborhoods={filteredData.neighborhoods} 
+            establishments={filteredData.establishments} 
+            showHeatmap={showHeatmap}
+          />
         </section>
 
         {/* Charts and Tables */}
@@ -452,16 +492,99 @@ export default function Dashboard() {
             O tamanho dos círculos representa a população do bairro.
           </p>
         </section>
-      </main>
+      </motion.main>
+
+      {/* Comparison Drawer */}
+      <AnimatePresence>
+        {comparedNeighborhoods.length > 0 && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[500] w-[90%] max-w-4xl"
+          >
+            <div className="bg-white rounded-2xl shadow-2xl border border-blue-200 overflow-hidden">
+              <div className="bg-blue-600 px-6 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-white font-bold">
+                  <BarChart3 className="w-5 h-5" />
+                  Comparação de Bairros ({comparedNeighborhoods.length}/2)
+                </div>
+                <button onClick={() => setComparedNeighborhoods([])} className="text-blue-100 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 bg-gradient-to-br from-white to-blue-50">
+                {comparisonData.map((n, idx) => (
+                  <div key={n.id} className={`${idx === 0 && comparisonData.length > 1 ? 'border-r border-blue-100 pr-8' : ''}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-xl font-bold text-slate-800">{n.name}</h4>
+                      <div 
+                        className="px-3 py-1 rounded-full text-white font-bold text-sm"
+                        style={{ backgroundColor: getScoreColor(n.score || 0) }}
+                      >
+                        Score: {n.score?.toFixed(2)}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Renda Média</span>
+                        <span className="font-bold text-slate-700">{n.income.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                      </div>
+                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-blue-500 h-full" style={{ width: `${Math.min(100, (n.income / 15000) * 100)}%` }}></div>
+                      </div>
+                      
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">População</span>
+                        <span className="font-bold text-slate-700">{n.population.toLocaleString('pt-BR')}</span>
+                      </div>
+                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-emerald-500 h-full" style={{ width: `${Math.min(100, (n.population / 200000) * 100)}%` }}></div>
+                      </div>
+
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Estabelecimentos</span>
+                        <span className="font-bold text-slate-700">{n.establishmentsCount}</span>
+                      </div>
+                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-purple-500 h-full" style={{ width: `${Math.min(100, (n.establishmentsCount / 500) * 100)}%` }}></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {comparisonData.length === 1 && (
+                  <div className="flex flex-col items-center justify-center border-2 border-dashed border-blue-200 rounded-xl bg-blue-50/50 p-8 text-center">
+                    <Layers className="w-8 h-8 text-blue-300 mb-2" />
+                    <p className="text-blue-500 font-medium">Selecione outro bairro para comparar</p>
+                    <p className="text-xs text-blue-400 mt-1">Clique no ícone de gráfico na lista de bairros</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Establishment Details Sidebar */}
-      {selectedEstablishment && (
-        <>
-          <div 
-            className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[9998] transition-opacity md:hidden"
-            onClick={() => navigate('/')}
-          />
-          <aside className="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-[0_0_40px_rgba(0,0,0,0.1)] z-[9999] border-l border-slate-200 flex flex-col transform transition-transform duration-300 ease-in-out">
+      <AnimatePresence>
+        {selectedEstablishment && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[9998] transition-opacity md:hidden"
+              onClick={() => navigate('/')}
+            />
+            <motion.aside 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-[0_0_40px_rgba(0,0,0,0.1)] z-[9999] border-l border-slate-200 flex flex-col"
+            >
             <div className="flex items-center justify-between p-4 px-6 border-b border-slate-100 bg-slate-50/50">
               <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <Store className="w-5 h-5 text-emerald-600" />
@@ -534,9 +657,10 @@ export default function Dashboard() {
                 </a>
               </div>
             </div>
-          </aside>
+          </motion.aside>
         </>
       )}
+    </AnimatePresence>
     </div>
   );
 }
