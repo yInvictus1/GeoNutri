@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Polygon, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
@@ -104,6 +104,7 @@ function HeatmapLayer({ points }: { points: [number, number, number][] }) {
 export default function MapView({ neighborhoods, establishments, showHeatmap }: MapViewProps) {
   const center: [number, number] = [-22.9068, -43.1729];
   const navigate = useNavigate();
+  const location = useLocation();
 
   const heatPoints = useMemo<[number, number, number][]>(() => {
     return establishments.map(e => [e.lat, e.lon, 1]);
@@ -224,7 +225,7 @@ export default function MapView({ neighborhoods, establishments, showHeatmap }: 
               icon={createIcon(typeColors[est.type] || typeColors.other)}
               eventHandlers={{
                 click: () => {
-                  navigate(`/estabelecimento/${est.id}`);
+                  navigate({ pathname: `/estabelecimento/${est.id}`, search: location.search });
                 }
               }}
             >
@@ -245,7 +246,7 @@ export default function MapView({ neighborhoods, establishments, showHeatmap }: 
                   
                   <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
                     <button 
-                      onClick={() => navigate(`/estabelecimento/${est.id}`)}
+                      onClick={() => navigate({ pathname: `/estabelecimento/${est.id}`, search: location.search })}
                       className="w-full flex items-center justify-between px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors group"
                     >
                       Ver Detalhes do Local

@@ -19,22 +19,28 @@ export function useDashboardFilters() {
     return dataMode ? dataMode === 'real' : true;
   }, [searchParams]);
 
-  const toggleNeighborhood = (name: string) => {
+  const toggleNeighborhood = (name: string, allNames: string[]) => {
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
       const current = newParams.get('bairros');
       let arr = current ? current.split(',').filter(Boolean) : [];
       
+      if (arr.length === 0) {
+        arr = allNames;
+      }
+
       if (arr.includes(name)) {
         arr = arr.filter((n) => n !== name);
       } else {
         arr.push(name);
       }
 
-      if (arr.length > 0) {
+      if (arr.length === allNames.length) {
+        newParams.delete('bairros');
+      } else if (arr.length > 0) {
         newParams.set('bairros', arr.join(','));
       } else {
-        newParams.delete('bairros');
+        newParams.set('bairros', 'none');
       }
       return newParams;
     });
@@ -43,7 +49,7 @@ export function useDashboardFilters() {
   const clearNeighborhoods = () => {
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
-      newParams.delete('bairros');
+      newParams.set('bairros', 'none');
       return newParams;
     });
   };
@@ -105,9 +111,10 @@ export function useDashboardFilters() {
 
   // Ensure "none" is treated as empty list explicitly
   const safeSelectedTypes = selectedTypes.includes('none') && selectedTypes.length === 1 ? [] : selectedTypes;
+  const safeSelectedNeighborhoods = selectedNeighborhoods.includes('none') && selectedNeighborhoods.length === 1 ? [] : selectedNeighborhoods;
 
   return {
-    selectedNeighborhoods,
+    selectedNeighborhoods: safeSelectedNeighborhoods,
     toggleNeighborhood,
     clearNeighborhoods,
     selectedTypes: safeSelectedTypes,

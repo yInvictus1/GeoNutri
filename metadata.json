@@ -1,6 +1,6 @@
 {
-  "name": "Mapeamento de Desertos Alimentares",
-  "description": "Uma aplicação web interativa que mapeia o acesso a alimentos saudáveis no RJ.",
+  "name": "GeoNutri",
+  "description": "Uma aplicação web interativa que mapeia o acesso a alimentos saudáveis.",
   "requestFramePermissions": [
     "geolocation"
   ]

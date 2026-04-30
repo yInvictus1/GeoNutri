@@ -3,19 +3,22 @@ import { generateSyntheticData, loadRealData, processScores, Neighborhood, Estab
 import MapView from './Map';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, ScatterChart, Scatter, ZAxis } from 'recharts';
 import { AlertTriangle, MapPin, Users, Store, Info, Search, Filter, Download, Navigation2, BarChart3, Layers, X } from 'lucide-react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDashboardFilters } from '../hooks/useDashboardFilters';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 export default function Dashboard() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [data, setData] = useState<{ neighborhoods: Neighborhood[], establishments: Establishment[] } | null>(null);
   const [neighborhoodSearch, setNeighborhoodSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [comparedNeighborhoods, setComparedNeighborhoods] = useState<string[]>([]);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showMethodologyModal, setShowMethodologyModal] = useState(false);
 
   // Custom hook extracting filter state logic to URL (Deep Linking)
   const { 
@@ -44,9 +47,15 @@ export default function Dashboard() {
   useEffect(() => {
     setLoading(true);
     if (useRealData) {
+      toast.loading("Carregando dados do IBGE e OpenStreetMap...", { id: "data-load" });
       loadRealData().then(processedData => {
         setData(processedData);
         setLoading(false);
+        toast.success("Dados reais carregados com sucesso!", { id: "data-load" });
+      }).catch(err => {
+        setLoading(false);
+        console.error(err);
+        toast.error("Erro ao carregar dados.", { id: "data-load" });
       });
     } else {
       const timer = setTimeout(() => {
@@ -54,6 +63,7 @@ export default function Dashboard() {
         const processedData = processScores(rawData.neighborhoods, rawData.establishments);
         setData(processedData);
         setLoading(false);
+        toast.success("Modo demonstração ativado.", { id: "data-load" });
       }, 500);
       return () => clearTimeout(timer);
     }
@@ -139,25 +149,33 @@ export default function Dashboard() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'desertos_alimentares_rj.csv');
+    link.setAttribute('download', 'geonutri_dados_rj.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    toast.success('Arquivo geonutri_dados_rj.csv baixado com sucesso!');
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-slate-700">Carregando dados socioeconômicos...</h2>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col md:flex-row relative">
+      {/* Global Loading Overlay */}
+      <AnimatePresence>
+        {loading && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[9999] bg-white/80 backdrop-blur-sm flex items-center justify-center"
+          >
+            <div className="text-center bg-white p-6 rounded-2xl shadow-xl border border-slate-100">
+              <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <h2 className="text-lg font-bold text-slate-800">Sincronizando Dados</h2>
+              <p className="text-sm text-slate-500 mt-1">Carregando informações geoespaciais...</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
       <motion.aside 
         initial={{ x: -20, opacity: 0 }}
@@ -166,11 +184,17 @@ export default function Dashboard() {
       >
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-emerald-700 flex items-center gap-2 mb-2">
-            <span className="text-3xl">🍎</span> Desertos Alimentares RJ
+            <span className="text-3xl">🍎</span> GeoNutri
           </h1>
           <p className="text-sm text-slate-500 leading-relaxed">
             Mapeamento do acesso a alimentos saudáveis em comunidades vulneráveis do Rio de Janeiro.
           </p>
+          <button 
+            onClick={() => setShowMethodologyModal(true)}
+            className="text-xs text-emerald-600 hover:text-emerald-800 font-medium mt-1 inline-flex items-center gap-1 transition-colors"
+          >
+            <Info className="w-3 h-3" /> Ver Metodologia do Score
+          </button>
         </div>
 
         <div className="mb-4 bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
@@ -190,21 +214,26 @@ export default function Dashboard() {
             </div>
           </label>
 
-          <label className="flex items-center cursor-pointer">
-            <div className="relative">
-              <input 
-                type="checkbox" 
-                className="sr-only" 
-                checked={showHeatmap}
-                onChange={() => setShowHeatmap(!showHeatmap)}
-              />
-              <div className={`block w-10 h-6 rounded-full transition-colors ${showHeatmap ? 'bg-orange-500' : 'bg-slate-300'}`}></div>
-              <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${showHeatmap ? 'transform translate-x-4' : ''}`}></div>
+          <div className="flex items-center justify-between group">
+            <label className="flex items-center cursor-pointer">
+              <div className="relative">
+                <input 
+                  type="checkbox" 
+                  className="sr-only" 
+                  checked={showHeatmap}
+                  onChange={() => setShowHeatmap(!showHeatmap)}
+                />
+                <div className={`block w-10 h-6 rounded-full transition-colors ${showHeatmap ? 'bg-orange-500' : 'bg-slate-300'}`}></div>
+                <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${showHeatmap ? 'transform translate-x-4' : ''}`}></div>
+              </div>
+              <div className="ml-3 text-sm font-medium text-slate-700">
+                Exibir Heatmap de Densidade
+              </div>
+            </label>
+            <div className="relative" title="O Heatmap mostra a concentração de estabelecimentos. Áreas vermelhas têm muitos estabelecimentos, ajudando a identificar zonas com alta ou baixa oferta de alimentos.">
+              <Info className="w-4 h-4 text-slate-400 hover:text-slate-600 transition-colors cursor-help" />
             </div>
-            <div className="ml-3 text-sm font-medium text-slate-700">
-              Exibir Heatmap de Densidade
-            </div>
-          </label>
+          </div>
         </div>
 
         {!useRealData && (
@@ -253,7 +282,7 @@ export default function Dashboard() {
                   <div className="p-3 text-center text-sm text-slate-500">Nenhum bairro encontrado</div>
                 ) : (
                   filteredNeighborhoodNames.map(name => {
-                    const isSelected = selectedNeighborhoods.includes(name);
+                    const isSelected = selectedNeighborhoods.length === 0 || selectedNeighborhoods.includes(name);
                     return (
                       <div 
                         key={name} 
@@ -261,7 +290,7 @@ export default function Dashboard() {
                       >
                         <div 
                           className="flex items-center flex-1 min-w-0"
-                          onClick={() => toggleNeighborhood(name)}
+                          onClick={() => toggleNeighborhood(name, allNeighborhoodNames)}
                         >
                           <div className={`w-4 h-4 rounded border flex items-center justify-center mr-2.5 transition-colors shrink-0 ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 bg-white'}`}>
                             {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>}
@@ -494,6 +523,79 @@ export default function Dashboard() {
         </section>
       </motion.main>
 
+      {/* Methodology Modal */}
+      <AnimatePresence>
+        {showMethodologyModal && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9998] transition-opacity"
+              onClick={() => setShowMethodologyModal(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg bg-white rounded-2xl shadow-2xl z-[9999] overflow-hidden border border-slate-200"
+            >
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-emerald-600" />
+                  Metodologia do Score
+                </h3>
+                <button 
+                  onClick={() => setShowMethodologyModal(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto max-h-[60vh] text-slate-600 text-sm space-y-4">
+                <p>
+                  O <strong>Score de Acesso</strong> (0 a 10) indica o quão bem um bairro está servido de acesso a alimentos in natura e minimamente processados. Bairros com menores scores caracterizam-se como potenciais <strong>Desertos ou Pântanos Alimentares</strong>.
+                </p>
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                  <h4 className="font-bold text-slate-800 mb-2">Composição do Cálculo:</h4>
+                  <ul className="space-y-3">
+                    <li className="flex gap-2">
+                      <span className="font-bold text-emerald-600">40%</span>
+                      <div>
+                        <strong>Densidade de Estabelecimentos:</strong> Relação entre o número de mercados/hortifrutis e a população local.
+                      </div>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-bold text-blue-600">30%</span>
+                      <div>
+                        <strong>Renda Média:</strong> O poder de compra afeta diretamente a escolha alimentar e a viabilidade de estabelecimentos comerciais de qualidade.
+                      </div>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-bold text-amber-600">30%</span>
+                      <div>
+                        <strong>Saneamento Básico:</strong> Áreas com déficit de infraestrutura muitas vezes correlacionam-se com exclusão comercial e menor oferta de produtos frescos.
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+                <p className="text-xs text-slate-500 italic mt-4">
+                  * Nota técnica: Este é um modelo inicial MVP. Modelos de produção em GIS devem incluir tempos reais de deslocamento (isócronas) e classificação qualitativa em loco.
+                </p>
+              </div>
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button 
+                  onClick={() => setShowMethodologyModal(false)}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors"
+                >
+                  Entendi
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Comparison Drawer */}
       <AnimatePresence>
         {comparedNeighborhoods.length > 0 && (
@@ -576,7 +678,7 @@ export default function Dashboard() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[9998] transition-opacity md:hidden"
-              onClick={() => navigate('/')}
+              onClick={() => navigate({ pathname: '/', search: location.search })}
             />
             <motion.aside 
               initial={{ x: '100%' }}
@@ -591,7 +693,7 @@ export default function Dashboard() {
                 Detalhes do Estabelecimento
               </h3>
               <button 
-                onClick={() => navigate('/')}
+                onClick={() => navigate({ pathname: '/', search: location.search })}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-full transition-colors"
                 title="Fechar (Esc)"
               >
