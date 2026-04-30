@@ -1,4 +1,4 @@
-# 🍎 Desertos Alimentares RJ
+# 🍎 GEONUTRI
 
 Uma aplicação web interativa para mapear e analisar o acesso a alimentos saudáveis em comunidades vulneráveis do Rio de Janeiro.
 
