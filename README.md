@@ -1,83 +1,71 @@
-# 🍎 GEONUTRI
+# 🍎 GeoNutri (anteriormente Desertos Alimentares RJ)
 
-Uma aplicação web interativa para mapear e analisar o acesso a alimentos saudáveis em comunidades vulneráveis do Rio de Janeiro.
+Uma aplicação web interativa e dashboard analítico para mapear e analisar o acesso a alimentos saudáveis em comunidades e bairros do Rio de Janeiro.
 
-## 🎯 O Problema Social
-"Desertos alimentares" são áreas urbanas onde os moradores têm dificuldade de acessar alimentos frescos, saudáveis e acessíveis (como frutas, verduras e legumes). Geralmente, essas regiões possuem apenas opções de alimentos ultraprocessados, o que contribui para problemas de saúde pública, como obesidade e desnutrição.
+## 🎯 O Problema Social: Desertos e Pântanos Alimentares
+"Desertos alimentares" são áreas urbanas onde os moradores têm dificuldade de acessar alimentos frescos, saudáveis e acessíveis (como hortifrutis e feiras locais). "Pântanos alimentares" são áreas onde há abundância de alimentos ultraprocessados (como lojas de conveniência) em detrimento de opções saudáveis. Essa desigualdade geográfica contribui diretamente para problemas de saúde pública, como obesidade, desnutrição e doenças crônicas.
 
-Este projeto visa identificar essas áreas no Rio de Janeiro cruzando dados socioeconômicos do IBGE com a localização de estabelecimentos alimentares (supermercados, feiras, hortifrútis) do OpenStreetMap.
+O **GeoNutri** visa identificar essas áreas no Rio de Janeiro, unindo dados de mapas interativos e estimativas socioeconômicas, gerando um **Score de Acesso** interativo, ajudando gestores públicos e ONGs na tomada de decisão.
 
-## 📸 Screenshot
-*(Adicione um screenshot ou gif da aplicação aqui)*
+## ✨ Funcionalidades do MVP (Mínimo Produto Viável)
+- **Mapa Geoespacial Interativo**: Visualização de bairros e concentração de estabelecimentos alimentares usando Leaflet.
+- **Heatmap de Densidade**: Identificação visual rápida de polos comercias e áreas de escassez absoluta de alimentos.
+- **Score de Acesso**: Uma pontuação de 0 a 10 calculada a partir da densidade de mercados, renda média e população do bairro.
+- **Integração com OpenStreetMap (OSM)**: Busca de dados geoespaciais em tempo real de supermercados, hortifrutis, padarias e conveniências pela Overpass API, com fallback automático robusto.
+- **Dashboard Analítico**: Gráficos dinâmicos usando Recharts comparando renda, acessibilidade e quantidade de estabelecimentos entre bairros.
+- **Comparações Lado a Lado**: Selecione e compare múltiplos bairros detalhadamente.
+- **Deep Linking**: Filtros de bairros e categorias refletidos na URL da página para o compartilhamento rápido de análises.
+- **Exportação de Dados**: Download em CSV de todas as métricas geradas para análise em outras ferramentas.
+
+## 🛠 Tecnologias Utilizadas
+- **Frontend**: React 18 com Vite
+- **Tipagem**: TypeScript
+- **Estilização e Animações**: Tailwind CSS, Framer Motion
+- **Mapas**: React Leaflet (`react-leaflet`), `leaflet.heat`
+- **Visualização de Dados**: Recharts
+- **Notificações e Ícones**: Sonner, Lucide React
 
 ## 🚀 Como Executar Localmente
 
 ### Pré-requisitos
-- Python 3.11+
-- Pip
+- Node.js (versão 18+)
+- npm, yarn ou pnpm
 
 ### Instalação
-1. Clone o repositório:
+
+1. Clone o repositório e acesse a pasta do projeto:
 ```bash
-git clone https://github.com/seu-usuario/desertos-alimentares-rj.git
-cd desertos-alimentares-rj
+git clone https://github.com/seu-usuario/geonutri.git
+cd geonutri
 ```
 
-2. Crie um ambiente virtual (recomendado):
+2. Instale as dependências:
 ```bash
-python -m venv venv
-source venv/bin/activate  # No Windows: venv\Scripts\activate
+npm install
 ```
 
-3. Instale as dependências:
+3. Inicie o servidor de desenvolvimento:
 ```bash
-pip install -r requirements.txt
+npm run dev
 ```
 
-4. Execute a aplicação:
-```bash
-streamlit run app.py
-```
+4. Acesse em seu navegador via `http://localhost:3000` (ou a porta informada no terminal).
 
-## 📂 Estrutura do Projeto
-```text
-desertos-alimentares-rj/
-├── app.py                  # Entrada principal do Streamlit
-├── requirements.txt        # Dependências do projeto
-├── README.md               # Documentação
-├── data/
-│   ├── raw/                # Dados brutos do IBGE e OSM
-│   └── processed/          # Dados tratados e prontos para uso
-├── src/
-│   ├── __init__.py
-│   ├── data_loader.py      # Funções para carregar e baixar dados
-│   ├── osm_fetcher.py      # Integração com a Overpass API (OpenStreetMap)
-│   ├── preprocessing.py    # Limpeza, merge e geração do índice
-│   ├── scoring.py          # Lógica do índice de deserto alimentar
-│   └── map_builder.py      # Geração do mapa com Folium
-└── notebooks/
-    └── exploratory_analysis.ipynb
-```
+## 📊 Metodologia do Score
+O Score de Acesso foi construído conceitualmente visando avaliar a resiliência alimentar da vizinhança.
+Consiste nos seguintes pesos:
+- **40% Densidade**: Relação entre o número de mercados e a população local.
+- **30% Renda Média**: Poder de compra para a viabilidade de compra de itens saudáveis no local.
+- **30% Saneamento e Infraestrutura**: Proxy de viabilidade comercial e investimento.
 
-## 🛠️ Tecnologias Utilizadas
-- **Frontend/Dashboard:** Streamlit
-- **Manipulação de Dados:** Pandas, GeoPandas, Numpy
-- **Visualização de Mapas:** Folium, streamlit-folium
-- **Gráficos:** Plotly
-- **APIs:** Requests (Overpass API)
+*(Nota: Este é um modelo inicial MVP. Modelos de produção mais granulares deverão incorporar tempos reais de deslocamento - isócronas - e classificação qualitativa baseada em avaliações em campo.)*
 
-## 🔄 Como Obter Dados Reais do IBGE
-O MVP atual utiliza dados sintéticos para facilitar a demonstração e desenvolvimento offline. Para utilizar dados reais:
-1. Baixe os dados do Censo 2022 no portal do IBGE (SIDRA) ou malhas territoriais.
-2. Salve os arquivos CSV/Shapefile na pasta `data/raw/`.
-3. Modifique a função `load_socioeconomic_data` em `src/data_loader.py` para ler os arquivos reais.
-4. Desmarque a opção "Usar Dados Sintéticos" na barra lateral do aplicativo.
-
-## 🗺️ Próximos Passos (Roadmap)
-- [ ] Integração automática com a API SIDRA do IBGE.
-- [ ] Adição de rotas de transporte público para calcular tempo de deslocamento até o mercado mais próximo.
-- [ ] Inclusão de dados de feiras livres da Prefeitura do Rio de Janeiro.
-- [ ] Exportação de relatórios em PDF para gestores públicos.
+## 🗺 Roadmap de Evolução
+- [ ] Integração com banco de dados em grafos / NoSQL para cache otimizado das requisições do OSM.
+- [ ] Análises temporais baseadas em check-ins de abertura/fechamento de locais.
+- [ ] Integração com roteamento de transporte público para calcular tempo real de deslocamento.
+- [ ] Portal de governança com mapas colaborativos focados em comunidades.
+- [ ] Inclusão da camada de feiras livres da prefeitura municipal.
 
 ## 📄 Licença
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+Este projeto está licenciado sob a licença MIT. Consulte o arquivo LICENSE para obter mais informações.
