@@ -143,21 +143,37 @@ export async function loadRealData() {
   let establishments: Establishment[] = [];
   
   try {
-    const query = `
-      [out:json][timeout:25];
-      (
-        node["shop"~"supermarket|convenience|greengrocer|bakery|butcher"](-23.05,-43.75,-22.75,-43.10);
-        node["amenity"="marketplace"](-23.05,-43.75,-22.75,-43.10);
-      );
-      out center 1500;
-    `;
+    const query = `[out:json][timeout:25];
+(
+  node["shop"~"supermarket|convenience|greengrocer|bakery|butcher"](-23.05,-43.75,-22.75,-43.10);
+  node["amenity"="marketplace"](-23.05,-43.75,-22.75,-43.10);
+);
+out center 1500;`;
     
-    const response = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST',
-      body: query
-    });
+    let response;
+    let errors = [];
+    const endpoints = [
+      'https://overpass-api.de/api/interpreter',
+      'https://lz4.overpass-api.de/api/interpreter',
+      'https://overpass.kumi.systems/api/interpreter'
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `data=${encodeURIComponent(query)}`
+        });
+        if (response.ok) break;
+      } catch (e) {
+        errors.push(e);
+      }
+    }
     
-    if (!response.ok) throw new Error('OSM API Error');
+    if (!response || !response.ok) {
+      throw new Error(`All OSM endpoints failed: ${errors.map((e: any) => e.message).join(', ')}`);
+    }
     
     const data = await response.json();
     
@@ -174,7 +190,7 @@ export async function loadRealData() {
       };
     });
   } catch (error) {
-    console.error("Erro ao buscar dados do OSM, usando fallback", error);
+    console.warn("Aviso: Não foi possível acessar o OpenStreetMap. Usando dados sintéticos como fallback.");
     establishments = generateSyntheticData().establishments;
   }
   
