@@ -1,4 +1,4 @@
-# 🍎 GeoNutri (anteriormente Desertos Alimentares RJ)
+# 🍎 GeoNutri 
 
 Uma aplicação web interativa e dashboard analítico para mapear e analisar o acesso a alimentos saudáveis em comunidades e bairros do Rio de Janeiro.
 
